@@ -58,3 +58,24 @@ func (tx *Tx) Rollback() error {
 	}
 	return nil
 }
+
+func (tx *Tx) Rollback() error {
+	var err error
+	var ctx interface{}
+	hooks := tx.Proxy.getHooks(tx.ctx)
+	if hooks != nil {
+		defer func() { hooks.postRollback(tx.ctx, ctx, tx, err) }()
+		if ctx, err = hooks.preRollback(tx.ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	if err = tx.Tx.Rollback(); err != nil {
+		return err
+	}
+
+	if hooks != nil {
+		return hooks.rollback(tx.ctx, ctx, tx)
+	}
+	return nil
+}

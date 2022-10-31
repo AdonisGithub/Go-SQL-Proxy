@@ -124,3 +124,20 @@ func (p *Proxy) OpenConnector(name string) (driver.Connector, error) {
 		Name: name,
 	}, nil
 }
+func (c *fallbackConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	conn, err := c.driver.Open(c.name)
+	if err != nil {
+		return nil, err
+	}
+	select {
+	default:
+	case <-ctx.Done():
+		conn.Close()
+		return nil, ctx.Err()
+	}
+	return conn, nil
+}
+
+func (c *fallbackConnector) Driver() driver.Driver {
+	return c.driver
+}
